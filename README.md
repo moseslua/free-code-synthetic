@@ -18,7 +18,7 @@ A lightweight wrapper that configures Claude Code to use [synthetic.new](https:/
 npm install -g @anthropic-ai/claude-code
 
 # 2. Install free-code wrapper
-curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/free-code-synthetic/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/moseslua/free-code-synthetic/main/install.sh | bash
 
 # 3. Configure your API key
 export SYNTHETIC_API_KEY="syn_your_key_here"
@@ -31,7 +31,7 @@ free-code
 
 ```bash
 # Download the wrapper
-curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/free-code-synthetic/main/free-code -o ~/.local/bin/free-code
+curl -fsSL https://raw.githubusercontent.com/moseslua/free-code-synthetic/main/free-code -o ~/.local/bin/free-code
 chmod +x ~/.local/bin/free-code
 
 # Set environment variables
@@ -61,7 +61,7 @@ This wrapper pairs perfectly with **My-Brain-Is-Full-Crew** — a 21-agent resea
 ```bash
 # 1. Clone crew repo
 cd ~/your-vault
-git clone https://github.com/YOUR_USERNAME/My-Brain-Is-Full-Crew.git
+git clone https://github.com/moseslua/My-Brain-Is-Full-Crew.git
 cd My-Brain-Is-Full-Crew
 bash scripts/launchme.sh
 
@@ -99,7 +99,7 @@ The wrapper is transparent — Claude Code thinks it's talking to Anthropic, but
 ## Documentation
 
 - [synthetic.new Claude Code Guide](https://dev.synthetic.new/docs/guides/claude-code)
-- [My-Brain-Is-Full-Crew](https://github.com/YOUR_USERNAME/My-Brain-Is-Full-Crew) — 21-agent research crew
+- [My-Brain-Is-Full-Crew](https://github.com/moseslua/My-Brain-Is-Full-Crew) — 21-agent research crew
 
 ## License
 
