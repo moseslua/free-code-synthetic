@@ -42,7 +42,7 @@ fi
 info "Installing to: $INSTALL_DIR"
 
 # Download the wrapper
-SCRIPT_URL="https://raw.githubusercontent.com/yourusername/free-code-synthetic/main/free-code"
+SCRIPT_URL="https://raw.githubusercontent.com/moseslua/free-code-synthetic/main/free-code"
 if command -v curl &> /dev/null; then
     curl -fsSL "$SCRIPT_URL" -o "$INSTALL_DIR/free-code" 2>/dev/null || cp "$(dirname "$0")/free-code" "$INSTALL_DIR/free-code"
 elif command -v wget &> /dev/null; then
