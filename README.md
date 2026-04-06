@@ -1,6 +1,6 @@
 # free-code-synthetic
 
-A lightweight wrapper that configures Claude Code to use [synthetic.new](https://synthetic.new)'s API instead of Anthropic's — enabling free, high-quality AI coding with models like **Kimi-K2.5-NVFP4**.
+A lightweight wrapper that configures Clxxxx Free-Code to use [synthetic.new](https://synthetic.new)'s API instead of Anthropic's — enabling free, high-quality AI coding with models like **Kimi-K2.5-NVFP4**.
 
 ## What is this?
 
