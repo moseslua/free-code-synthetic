@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # free-code - Claude Code wrapper for synthetic.new
-# https://github.com/synthetic-new/free-code
+# https://github.com/moseslua/free-code-synthetic
 #
 # This wrapper configures Claude Code to use synthetic.new's API instead of Anthropic's.
 # Compatible with all Claude Code features including agents, skills, and subagents.
