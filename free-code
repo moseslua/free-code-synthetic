@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# free-code - Claude Code wrapper for synthetic.new
+# https://github.com/synthetic-new/free-code
+#
+# This wrapper configures Claude Code to use synthetic.new's API instead of Anthropic's.
+# Compatible with all Claude Code features including agents, skills, and subagents.
+
+set -e
+
+# Use SYNTHETIC_API_KEY if ANTHROPIC_AUTH_TOKEN not set
+export ANTHROPIC_AUTH_TOKEN="${ANTHROPIC_AUTH_TOKEN:-${SYNTHETIC_API_KEY:-${ANTHROPIC_API_KEY}}}"
+
+# API endpoint - note: /anthropic NOT /openai/v1
+export ANTHROPIC_BASE_URL="${ANTHROPIC_BASE_URL:-https://api.synthetic.new/anthropic}"
+
+# Model configuration for synthetic.new
+export ANTHROPIC_DEFAULT_OPUS_MODEL="${ANTHROPIC_DEFAULT_OPUS_MODEL:-hf:nvidia/Kimi-K2.5-NVFP4}"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="${ANTHROPIC_DEFAULT_SONNET_MODEL:-hf:nvidia/Kimi-K2.5-NVFP4}"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="${ANTHROPIC_DEFAULT_HAIKU_MODEL:-hf:zai-org/GLM-4.7-Flash}"
+export CLAUDE_CODE_SUBAGENT_MODEL="${CLAUDE_CODE_SUBAGENT_MODEL:-hf:nvidia/Kimi-K2.5-NVFP4}"
+
+# Privacy - disable telemetry
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="${CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:-1}"
+
+# Check for API key
+if [ -z "$ANTHROPIC_AUTH_TOKEN" ]; then
+    cat >&2 <<'EOF'
+Error: No API key configured
+
+Please set one of the following environment variables:
+  - ANTHROPIC_AUTH_TOKEN (preferred)
+  - SYNTHETIC_API_KEY
+  - ANTHROPIC_API_KEY
+
+Get your API key from: https://synthetic.new
+
+Quick start:
+  export SYNTHETIC_API_KEY="syn_your_key_here"
+  free-code
+EOF
+    exit 1
+fi
+
+# Check if claude-code is installed
+if ! command -v claude &> /dev/null; then
+    if [ -f "/root/.hermes/node/lib/node_modules/@anthropic-ai/claude-code/cli.js" ]; then
+        CLAUDE_BIN="/root/.hermes/node/lib/node_modules/@anthropic-ai/claude-code/cli.js"
+    elif [ -f "/usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js" ]; then
+        CLAUDE_BIN="/usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js"
+    elif [ -f "$HOME/.local/lib/node_modules/@anthropic-ai/claude-code/cli.js" ]; then
+        CLAUDE_BIN="$HOME/.local/lib/node_modules/@anthropic-ai/claude-code/cli.js"
+    else
+        echo "Error: Claude Code not found. Please install it first:"
+        echo "  npm install -g @anthropic-ai/claude-code"
+        exit 1
+    fi
+else
+    CLAUDE_BIN=$(which claude)
+fi
+
+# Execute claude with all arguments passed through
+exec "$CLAUDE_BIN" "$@"
