@@ -46,13 +46,27 @@ free-code
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ANTHROPIC_AUTH_TOKEN` | *required* | Your synthetic.new API key |
+| `ANTHROPIC_AUTH_TOKEN` | *required* | Your synthetic.new API key (preferred) |
+| `SYNTHETIC_API_KEY` | - | Alternative API key name |
+| `ANTHROPIC_API_KEY` | - | Fallback API key name |
 | `ANTHROPIC_BASE_URL` | `https://api.synthetic.new/anthropic` | API endpoint |
 | `ANTHROPIC_DEFAULT_OPUS_MODEL` | `hf:nvidia/Kimi-K2.5-NVFP4` | Model for complex tasks |
 | `ANTHROPIC_DEFAULT_SONNET_MODEL` | `hf:nvidia/Kimi-K2.5-NVFP4` | Model for standard tasks |
 | `ANTHROPIC_DEFAULT_HAIKU_MODEL` | `hf:zai-org/GLM-4.7-Flash` | Model for quick tasks |
 | `CLAUDE_CODE_SUBAGENT_MODEL` | `hf:nvidia/Kimi-K2.5-NVFP4` | Model for crew agents |
 | `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` | `1` | Disable telemetry |
+| `DEBUG` | - | Show debug output |
+
+## CLI Options
+
+```bash
+free-code --help        # Show help
+free-code --version     # Show version
+free-code --bare        # Fast startup (no hooks/plugins)
+free-code -p "prompt"   # Print mode (non-interactive)
+```
+
+Pass any Claude Code options directly — they're passed through transparently.
 
 ## My-Brain-Is-Full-Crew Integration
 

@@ -5,58 +5,199 @@
 # This wrapper configures Claude Code to use synthetic.new's API instead of Anthropic's.
 # Compatible with all Claude Code features including agents, skills, and subagents.
 
-set -e
+set -euo pipefail
 
-# Use SYNTHETIC_API_KEY if ANTHROPIC_AUTH_TOKEN not set
-export ANTHROPIC_AUTH_TOKEN="${ANTHROPIC_AUTH_TOKEN:-${SYNTHETIC_API_KEY:-${ANTHROPIC_API_KEY}}}"
+# =============================================================================
+# Configuration
+# =============================================================================
 
-# API endpoint - note: /anthropic NOT /openai/v1
-export ANTHROPIC_BASE_URL="${ANTHROPIC_BASE_URL:-https://api.synthetic.new/anthropic}"
+readonly DEFAULT_API_URL="https://api.synthetic.new/anthropic"
+readonly DEFAULT_MODEL="hf:nvidia/Kimi-K2.5-NVFP4"
+readonly DEFAULT_FLASH_MODEL="hf:zai-org/GLM-4.7-Flash"
 
-# Model configuration for synthetic.new
-export ANTHROPIC_DEFAULT_OPUS_MODEL="${ANTHROPIC_DEFAULT_OPUS_MODEL:-hf:nvidia/Kimi-K2.5-NVFP4}"
-export ANTHROPIC_DEFAULT_SONNET_MODEL="${ANTHROPIC_DEFAULT_SONNET_MODEL:-hf:nvidia/Kimi-K2.5-NVFP4}"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="${ANTHROPIC_DEFAULT_HAIKU_MODEL:-hf:zai-org/GLM-4.7-Flash}"
-export CLAUDE_CODE_SUBAGENT_MODEL="${CLAUDE_CODE_SUBAGENT_MODEL:-hf:nvidia/Kimi-K2.5-NVFP4}"
+# =============================================================================
+# API Key Resolution (ANTHROPIC_AUTH_TOKEN takes precedence)
+# =============================================================================
 
-# Privacy - disable telemetry
-export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="${CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:-1}"
+resolve_api_key() {
+    local key_source=""
+    local api_key=""
 
-# Check for API key
-if [ -z "$ANTHROPIC_AUTH_TOKEN" ]; then
+    if [[ -n "${ANTHROPIC_AUTH_TOKEN:-}" ]]; then
+        api_key="$ANTHROPIC_AUTH_TOKEN"
+        key_source="ANTHROPIC_AUTH_TOKEN"
+    elif [[ -n "${SYNTHETIC_API_KEY:-}" ]]; then
+        api_key="$SYNTHETIC_API_KEY"
+        key_source="SYNTHETIC_API_KEY"
+    elif [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
+        api_key="$ANTHROPIC_API_KEY"
+        key_source="ANTHROPIC_API_KEY"
+    fi
+
+    if [[ -z "$api_key" ]]; then
+        return 1
+    fi
+
+    printf '%s\n' "$api_key"
+    [[ -n "${DEBUG:-}" ]] && echo "[free-code] Using API key from: $key_source" >&2
+    return 0
+}
+
+# =============================================================================
+# Claude Binary Detection
+# =============================================================================
+
+find_claude_binary() {
+    local claude_path=""
+
+    # Check PATH first
+    if command -v claude &> /dev/null; then
+        command -v claude
+        return 0
+    fi
+
+    # Check common installation locations
+    local -a search_paths=(
+        "$HOME/.hermes/node/lib/node_modules/@anthropic-ai/claude-code/cli.js"
+        "$HOME/.local/lib/node_modules/@anthropic-ai/claude-code/cli.js"
+        "$HOME/.npm/lib/node_modules/@anthropic-ai/claude-code/cli.js"
+        "/usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js"
+        "/usr/lib/node_modules/@anthropic-ai/claude-code/cli.js"
+    )
+
+    for path in "${search_paths[@]}"; do
+        if [[ -f "$path" ]]; then
+            printf '%s\n' "$path"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# =============================================================================
+# Error Messages
+# =============================================================================
+
+show_api_key_error() {
     cat >&2 <<'EOF'
-Error: No API key configured
-
-Please set one of the following environment variables:
-  - ANTHROPIC_AUTH_TOKEN (preferred)
-  - SYNTHETIC_API_KEY
-  - ANTHROPIC_API_KEY
-
-Get your API key from: https://synthetic.new
-
-Quick start:
-  export SYNTHETIC_API_KEY="syn_your_key_here"
-  free-code
+╔══════════════════════════════════════════════════════════════════╗
+║  Error: No API key configured                                    ║
+╠══════════════════════════════════════════════════════════════════╣
+║                                                                    ║
+║  Please set one of these environment variables:                    ║
+║                                                                    ║
+║    • ANTHROPIC_AUTH_TOKEN   (preferred, matches synthetic docs)    ║
+║    • SYNTHETIC_API_KEY      (alternative)                          ║
+║    • ANTHROPIC_API_KEY      (fallback)                             ║
+║                                                                    ║
+║  Get your API key: https://synthetic.new                            ║
+║                                                                    ║
+║  Quick start:                                                      ║
+║    export SYNTHETIC_API_KEY="syn_your_key_here"                   ║
+║    free-code                                                       ║
+║                                                                    ║
+║  Or create ~/.free-code-env and source it in your shell profile.   ║
+╚══════════════════════════════════════════════════════════════════╝
 EOF
-    exit 1
-fi
+}
 
-# Check if claude-code is installed
-if ! command -v claude &> /dev/null; then
-    if [ -f "/root/.hermes/node/lib/node_modules/@anthropic-ai/claude-code/cli.js" ]; then
-        CLAUDE_BIN="/root/.hermes/node/lib/node_modules/@anthropic-ai/claude-code/cli.js"
-    elif [ -f "/usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js" ]; then
-        CLAUDE_BIN="/usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js"
-    elif [ -f "$HOME/.local/lib/node_modules/@anthropic-ai/claude-code/cli.js" ]; then
-        CLAUDE_BIN="$HOME/.local/lib/node_modules/@anthropic-ai/claude-code/cli.js"
-    else
-        echo "Error: Claude Code not found. Please install it first:"
-        echo "  npm install -g @anthropic-ai/claude-code"
+show_install_error() {
+    cat >&2 <<'EOF'
+╔══════════════════════════════════════════════════════════════════╗
+║  Error: Claude Code not found                                    ║
+╠══════════════════════════════════════════════════════════════════╣
+║                                                                    ║
+║  Please install Claude Code first:                                 ║
+║                                                                    ║
+║    npm install -g @anthropic-ai/claude-code                        ║
+║                                                                    ║
+║  Or if you already have it, ensure it's in your PATH.            ║
+╚══════════════════════════════════════════════════════════════════╝
+EOF
+}
+
+show_version() {
+    echo "free-code-synthetic v1.0.0"
+    echo "https://github.com/moseslua/free-code-synthetic"
+}
+
+show_help() {
+    cat <<'EOF'
+Usage: free-code [OPTIONS] [PROMPT]
+
+A wrapper for Claude Code that routes API calls to synthetic.new
+
+Options:
+  -h, --help      Show this help message
+  -v, --version   Show version information
+  --bare          Run in bare mode (no hooks/plugins)
+  -p, --print     Run in print mode (non-interactive)
+
+Environment Variables:
+  ANTHROPIC_AUTH_TOKEN      Your synthetic.new API key (required)
+  SYNTHETIC_API_KEY         Alternative API key
+  ANTHROPIC_API_KEY         Fallback API key
+  ANTHROPIC_BASE_URL        API endpoint (default: https://api.synthetic.new/anthropic)
+
+Examples:
+  free-code                           # Start interactive session
+  free-code "Hello world"             # Single prompt
+  free-code --bare -p "Review code"   # CI/scripting mode
+
+Full Claude Code options: claude --help
+EOF
+}
+
+# =============================================================================
+# Main
+# =============================================================================
+
+main() {
+    # Handle help/version flags before anything else
+    case "${1:-}" in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        -v|--version)
+            show_version
+            exit 0
+            ;;
+    esac
+
+    # Resolve API key
+    local api_key
+    if ! api_key=$(resolve_api_key); then
+        show_api_key_error
         exit 1
     fi
-else
-    CLAUDE_BIN=$(which claude)
-fi
 
-# Execute claude with all arguments passed through
-exec "$CLAUDE_BIN" "$@"
+    # Export required environment variables
+    export ANTHROPIC_AUTH_TOKEN="$api_key"
+    export ANTHROPIC_BASE_URL="${ANTHROPIC_BASE_URL:-$DEFAULT_API_URL}"
+    export ANTHROPIC_DEFAULT_OPUS_MODEL="${ANTHROPIC_DEFAULT_OPUS_MODEL:-$DEFAULT_MODEL}"
+    export ANTHROPIC_DEFAULT_SONNET_MODEL="${ANTHROPIC_DEFAULT_SONNET_MODEL:-$DEFAULT_MODEL}"
+    export ANTHROPIC_DEFAULT_HAIKU_MODEL="${ANTHROPIC_DEFAULT_HAIKU_MODEL:-$DEFAULT_FLASH_MODEL}"
+    export CLAUDE_CODE_SUBAGENT_MODEL="${CLAUDE_CODE_SUBAGENT_MODEL:-$DEFAULT_MODEL}"
+    export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="${CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:-1}"
+
+    # Find claude binary
+    local claude_bin
+    if ! claude_bin=$(find_claude_binary); then
+        show_install_error
+        exit 1
+    fi
+
+    # Debug output
+    [[ -n "${DEBUG:-}" ]] && {
+        echo "[free-code] Claude binary: $claude_bin" >&2
+        echo "[free-code] API endpoint: $ANTHROPIC_BASE_URL" >&2
+        echo "[free-code] Default model: $ANTHROPIC_DEFAULT_SONNET_MODEL" >&2
+    }
+
+    # Execute claude with all arguments passed through
+    exec "$claude_bin" "$@"
+}
+
+main "$@"
