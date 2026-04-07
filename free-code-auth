@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Update free-code credentials
+
+CONFIG_DIR="${HOME}/.config/free-code"
+CONFIG_FILE="${CONFIG_DIR}/config"
+
+# Create config dir if missing
+mkdir -p "$CONFIG_DIR"
+chmod 700 "$CONFIG_DIR"
+
+echo "╔════════════════════════════════════════════════════════════╗"
+echo "║  free-code - Update credentials                            ║"
+echo "╠════════════════════════════════════════════════════════════╣"
+echo "║  Current config: ${CONFIG_FILE}"
+echo "╚════════════════════════════════════════════════════════════╝"
+echo ""
+
+# Show current key (masked)
+if [ -f "$CONFIG_FILE" ]; then
+    CURRENT_KEY=$(grep "SYNTHETIC_API_KEY" "$CONFIG_FILE" 2>/dev/null | cut -d'"' -f2 || echo "")
+    if [ -n "$CURRENT_KEY" ]; then
+        MASKED="${CURRENT_KEY:0:8}...${CURRENT_KEY: -4}"
+        echo "Current API key: ${MASKED}"
+        echo ""
+    fi
+fi
+
+printf "Enter new API key (or press Enter to keep current): "
+read -r NEW_KEY
+echo ""
+
+if [ -n "$NEW_KEY" ]; then
+    cat > "$CONFIG_FILE" << EOF
+# free-code credentials configuration
+# This file is sourced by the free-code wrapper script
+# Get your key from: https://synthetic.new
+
+SYNTHETIC_API_KEY="${NEW_KEY}"
+EOF
+    chmod 600 "$CONFIG_FILE"
+    echo "✓ API key updated in ${CONFIG_FILE}"
+else
+    echo "No change made."
+fi
